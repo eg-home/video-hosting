@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<script src="mraid.js"></script>
+<style>
+  html, body { margin:0; padding:0; width:100%; height:100%; }
+  body { background:#0A6E2F; font-family:-apple-system, Roboto, sans-serif; color:#fff; }
+  #root { display:flex; flex-direction:column; height:100%; text-align:center; }
+  #main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  h1 { font-size:22px; margin:8px 0; }
+  .row { font-size:14px; margin:4px 0; }
+  #timer { font-size:40px; font-weight:bold; }
+  #loaded { color:#FFD60A; }
+  #clickZone { height:18%; background:#1C1C1E; display:flex; flex-direction:column;
+               align-items:center; justify-content:center; -webkit-user-select:none; user-select:none; }
+  img.res { width:1px; height:1px; opacity:0.01; position:absolute; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="main">
+    <h1>SDK-359 SLOW MRAID</h1>
+    <div class="row">content visible = COMMIT point</div>
+    <div id="timer">0.0s</div>
+    <div class="row">resources loaded: <span id="loaded">0 / 8</span></div>
+    <div class="row" id="state">mraid: -</div>
+    <div class="row" id="finish">window.load: pending…</div>
+  </div>
+  <div id="clickZone">
+    <b>TAP = CLICK (mraid.open)</b>
+    <div>bidmachine.io</div>
+  </div>
+</div>
+
+<!-- Heavy subresources (~7 MB total). Static tags so onPageFinished waits for them.
+     Unique query strings defeat proxy/webview caching between resources. -->
+<img class="res" src="red_screen_30s_portrait.mp4?cb=a1" onload="resDone(1)" onerror="resDone(1)">
+<img class="res" src="red_screen_30s_portrait.mp4?cb=a2" onload="resDone(2)" onerror="resDone(2)">
+<img class="res" src="red_screen_30s_portrait.mp4?cb=a3" onload="resDone(3)" onerror="resDone(3)">
+<img class="res" src="White_Screen1_Minute.mp4?cb=b1"    onload="resDone(4)" onerror="resDone(4)">
+<img class="res" src="White_Screen1_Minute.mp4?cb=b2"    onload="resDone(5)" onerror="resDone(5)">
+<img class="res" src="White_Screen1_Minute.mp4?cb=b3"    onload="resDone(6)" onerror="resDone(6)">
+<img class="res" src="gradient_long.mp4?cb=c1"           onload="resDone(7)" onerror="resDone(7)">
+<img class="res" src="gradient_long.mp4?cb=c2"           onload="resDone(8)" onerror="resDone(8)">
+
+<script>
+  var T0 = Date.now(), DONE = 0;
+  function log(m) { console.log("[sdk359-slow] " + m + " | t=+" + ((Date.now()-T0)/1000).toFixed(2) + "s"); }
+  function resDone(n) {
+    DONE++;
+    document.getElementById("loaded").textContent = DONE + " / 8";
+    log("resource " + n + " finished (" + DONE + "/8)");
+  }
+  log("html parsed, content visible (commit should be around now)");
+
+  setInterval(function () {
+    document.getElementById("timer").textContent = ((Date.now()-T0)/1000).toFixed(1) + "s";
+  }, 100);
+
+  document.addEventListener("DOMContentLoaded", function () { log("DOMContentLoaded"); });
+  window.addEventListener("load", function () {
+    log("window.load — ALL resources done (onPageFinished should be around now)");
+    document.getElementById("finish").textContent =
+      "window.load: +" + ((Date.now()-T0)/1000).toFixed(1) + "s";
+  });
+
+  function showState() {
+    try { document.getElementById("state").textContent = "mraid: " + mraid.getState(); } catch (e) {}
+  }
+  function onReady() {
+    log("mraid ready, state=" + mraid.getState());
+    showState();
+    mraid.addEventListener("stateChange", function (s) { log("stateChange -> " + s); showState(); });
+    document.getElementById("clickZone").addEventListener("touchend", function (e) {
+      e.stopPropagation();
+      log("user tap -> mraid.open");
+      mraid.open("https://bidmachine.io");
+    });
+  }
+  if (typeof mraid !== "undefined" && mraid.getState() !== "loading") { onReady(); }
+  else if (typeof mraid !== "undefined") { mraid.addEventListener("ready", onReady); }
+  else { log("no mraid object"); }
+</script>
+</body>
+</html>
